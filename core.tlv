@@ -19,6 +19,7 @@
    //  x13 (a3): 1..10
    //  x14 (a4): Sum
    // 
+   m4_asm(ADDI, x0, x0, 1)
    m4_asm(ADDI, x14, x0, 0)             // Initialize sum register a4 with 0
    m4_asm(ADDI, x12, x0, 1010)          // Store count of 10 in register a2.
    m4_asm(ADDI, x13, x0, 1)             // Initialize loop count register a3 with 0
@@ -65,7 +66,7 @@
    $rs2[4:0] = $instr[24:20];
    
    $opcode[6:0] = $instr[6:0];
-   $rd_valid = $is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr;
+   $rd_valid = ($is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr) && $rd;
    $rs1_valid = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
    $rs2_valid = $is_r_instr || $is_s_instr || $is_b_instr;
    
@@ -88,6 +89,15 @@
    
    $is_add = $dec_bits ==? 11'bx_000_0110011;
    
+   $wr_en = $rd_valid;
+   $wr_index[4:0] = $rd[4:0];
+   $wr_data[31:0] = $result[31:0];
+   $rd_en1 = $rs1_valid;
+   $rd_index1[4:0] = $rs1[4:0];
+   $rd_en2 = $rs2_valid;
+   $rd_index2[4:0] = $rs2[4:0];
+   
+   
    $result[31:0] =
     $is_addi ? $src1_value + $imm :
     $is_add ? $src1_value + $src2_value :
@@ -101,9 +111,10 @@
    *passed = 1'b0;
    *failed = *cyc_cnt > M4_MAX_CYC;
    
-   m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $result[31:0], $rs1_valid, $rs1[4:0], $src1_value, $rs2_valid, $rs2[4:0], $src2_value)
+   //m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $result[31:0], $rs1_valid, $rs1[4:0], $src1_value, $rs2_valid, $rs2[4:0], $src2_value)
+   
+   m4+rf(32, 32, $reset, $wr_en, $wr_index[4:0], $wr_data[31:0], $rd_en1, $rd_index1[4:0], $src1_value, $rd_en2, $rd_index2[4:0], $src2_value)
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
    m4+cpu_viz()
 \SV
    endmodule
-
