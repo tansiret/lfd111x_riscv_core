@@ -19,7 +19,6 @@
    //  x13 (a3): 1..10
    //  x14 (a4): Sum
    // 
-   m4_asm(ADDI, x0, x0, 1)
    m4_asm(ADDI, x14, x0, 0)             // Initialize sum register a4 with 0
    m4_asm(ADDI, x12, x0, 1010)          // Store count of 10 in register a2.
    m4_asm(ADDI, x13, x0, 1)             // Initialize loop count register a3 with 0
@@ -45,7 +44,7 @@
    
    
    //my code
-   $next_pc[31:0] = $reset ? 0 : (>>1$next_pc + 32'd4);
+   $next_pc[31:0] = $reset ? 0 : $taken_br ? $br_tgt_pc : (>>1$next_pc + 32'd4);
    $pc[31:0] = >>1$next_pc;
    
    $addr[31:0] = $pc;
@@ -103,7 +102,16 @@
     $is_add ? $src1_value + $src2_value :
     32'b0;
     
+   $taken_br[31:0] =
+    $is_beq ? ($src1_value == $src2_value):
+    $is_bne ? ($src1_value != $src2_value):
+    $is_blt ? (($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31])):
+    $is_bge ? (($src1_value >= $src2_value) ^ ($src1_value[31] != $src2_value[31])):
+    $is_bltu ? ($src1_value < $src2_value):
+    $is_bgeu ? ($src1_value >= $src2_value):
+    32'b0;
     
+   $br_tgt_pc[31:0] = $pc + $imm;
    //my code
    
    
