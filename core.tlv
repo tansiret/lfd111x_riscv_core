@@ -33,7 +33,7 @@
    
    
    //my code
-   $next_pc[31:0] = $reset ? 0 : $taken_br ? $br_tgt_pc : (>>1$next_pc + 32'd4);
+   $next_pc[31:0] = $reset ? 32'b0 : $is_jal ? $br_tgt_pc : $is_jalr ? $jalr_tgt_pc : $taken_br ? $br_tgt_pc : (>>1$next_pc + 32'd4);
    $pc[31:0] = >>1$next_pc;
    
    $addr[31:0] = $pc;
@@ -42,10 +42,10 @@
    $instr[31:0] = $read_data;
    
    $is_u_instr = $instr[6:2] == 5'b00101 || $instr[6:2] == 5'b01101;
-   $is_i_instr = $instr[6:2] == 5'b00110 || $instr[6:2] == 5'b00100 || $instr[6:2] == 5'b00001 || $instr[6:2] == 5'b00000;
+   $is_i_instr = $instr[6:2] == 5'b00000 || $instr[6:2] == 5'b00100 || $instr[6:2] == 5'b11001;
    $is_b_instr = $instr[6:2] == 5'b11000;
-   $is_r_instr = $instr[6:2] == 5'b01110 || $instr[6:2] == 5'b01100 || $instr[6:2] == 5'b01011 || $instr[6:2] == 5'b10100;
-   $is_s_instr = $instr[6:2] == 5'b00001 || $instr[6:2] == 5'b01001;
+   $is_r_instr = $instr[6:2] == 5'b01100;
+   $is_s_instr = $instr[6:2] == 5'b01000;
    $is_j_instr = $instr[6:2] == 5'b11011;
    
    $rd[4:0] = $instr[11:7];
@@ -54,16 +54,16 @@
    $rs2[4:0] = $instr[24:20];
    
    $opcode[6:0] = $instr[6:0];
-   $rd_valid = ($is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr) && $rd;
+   $rd_valid = ($is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr) && ($rd != 5'b0);
    $rs1_valid = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
    $rs2_valid = $is_r_instr || $is_s_instr || $is_b_instr;
    
-   $imm[31:0] = $is_i_instr ? { {20{$instr[31]}}, $instr[31:20] } :
-                $is_s_instr ? { {20{$instr[31]}}, $instr[31:25], $instr[11:7] } :
-                $is_b_instr ? { {20{$instr[31]}}, $instr[31], $instr[7], $instr[30:25], $instr[11:8], 1'b0 } :
-                $is_u_instr ? { $instr[31:12], 12'b0 } :
-                $is_j_instr ? { {12{$instr[31]}}, $instr[31], $instr[19:12], $instr[20], $instr[30:21], 1'b0 } :
-                32'b0;  // Default
+   $imm[31:0] = $is_i_instr ? { {21{$instr[31]}}, $instr[30:20] } :
+             $is_s_instr ? { {21{$instr[31]}}, $instr[30:25], $instr[11:7] } :
+             $is_b_instr ? { {20{$instr[31]}}, $instr[7], $instr[30:25], $instr[11:8], 1'b0 } :
+             $is_u_instr ? { $instr[31:12], 12'b0 } :
+             $is_j_instr ? { {12{$instr[31]}}, $instr[19:12], $instr[20], $instr[30:21], 1'b0 } :
+             32'b0; //Default
                 
    $dec_bits[10:0] = {$instr[30],$funct3,$opcode};
    $is_beq = $dec_bits ==? 11'bx_000_1100011;
@@ -128,13 +128,11 @@
     $is_andi ? $src1_value & $imm :
     $is_ori ? $src1_value | $imm :
     $is_xori ? $src1_value ^ $imm :
-    $is_addi ? $src1_value + $imm :
     $is_slli ? $src1_value << $imm[5:0] :
     $is_srli ? $src1_value >> $imm[5:0] :
     $is_and ? $src1_value & $src2_value :
     $is_or ? $src1_value | $src2_value :
     $is_xor ? $src1_value ^ $src2_value :
-    $is_add ? $src1_value + $src2_value :
     $is_sub ? $src1_value - $src2_value :
     $is_sll ? $src1_value << $src2_value[4:0] :
     $is_srl ? $src1_value >> $src2_value[4:0] :
@@ -150,16 +148,17 @@
     $is_srai ? $srai_rslt[31:0] :
     32'b0;
     
-   $taken_br[31:0] =
+   $taken_br =
     $is_beq ? ($src1_value == $src2_value):
     $is_bne ? ($src1_value != $src2_value):
     $is_blt ? (($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31])):
     $is_bge ? (($src1_value >= $src2_value) ^ ($src1_value[31] != $src2_value[31])):
     $is_bltu ? ($src1_value < $src2_value):
     $is_bgeu ? ($src1_value >= $src2_value):
-    32'b0;
+    1'b0;
     
    $br_tgt_pc[31:0] = $pc + $imm;
+   $jalr_tgt_pc[31:0] = $src1_value + $imm;
    //my code
    
    
@@ -175,4 +174,3 @@
    m4+cpu_viz()
 \SV
    endmodule
-
