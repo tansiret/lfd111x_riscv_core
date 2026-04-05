@@ -31,7 +31,7 @@
    
    $reset = *reset;
    
-   
+
    //my code
    $next_pc[31:0] = $reset ? 32'b0 : $is_jal ? $br_tgt_pc : $is_jalr ? $jalr_tgt_pc : $taken_br ? $br_tgt_pc : (>>1$next_pc + 32'd4);
    $pc[31:0] = >>1$next_pc;
@@ -102,13 +102,8 @@
    $is_or    = $dec_bits ==? 11'b0_110_0110011;
    $is_and   = $dec_bits ==? 11'b0_111_0110011;
    
-   $wr_en = $rd_valid;
-   $wr_index[4:0] = $rd[4:0];
-   $wr_data[31:0] = $result[31:0];
-   $rd_en1 = $rs1_valid;
-   $rd_index1[4:0] = $rs1[4:0];
-   $rd_en2 = $rs2_valid;
-   $rd_index2[4:0] = $rs2[4:0];
+   $is_load  = $dec_bits ==? 11'bx_010_0000011;
+   $is_store  = $dec_bits ==? 11'bx_010_0100011;
    
    // SLTU and SLTI (set if less than, unsigned) results:
    $sltu_rslt[31:0] = {31'b0, $src1_value < $src2_value};
@@ -146,7 +141,11 @@
     $is_slti ? (($src1_value[31] == $imm[31]) ? $sltiu_rslt : {31'b0, $src1_value[31]} ) :
     $is_sra ? $sra_rslt[31:0] :
     $is_srai ? $srai_rslt[31:0] :
+    $is_load ? $src1_value + $imm :
+    $is_store ? $src1_value + $imm :
     32'b0;
+    
+   $rf_result[31:0] = $is_load ? $ld_data : $result;
     
    $taken_br =
     $is_beq ? ($src1_value == $src2_value):
@@ -167,10 +166,9 @@
    m4+tb()
    *failed = *cyc_cnt > M4_MAX_CYC;
    
-   //m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $result[31:0], $rs1_valid, $rs1[4:0], $src1_value, $rs2_valid, $rs2[4:0], $src2_value)
+   m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $rf_result[31:0], $rs1_valid, $rs1[4:0], $src1_value, $rs2_valid, $rs2[4:0], $src2_value)
    
-   m4+rf(32, 32, $reset, $wr_en, $wr_index[4:0], $wr_data[31:0], $rd_en1, $rd_index1[4:0], $src1_value, $rd_en2, $rd_index2[4:0], $src2_value)
-   //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
+   m4+dmem(32, 32, $reset, $result[31:0], $is_store, $src2_value[31:0], $is_load, $ld_data)
    m4+cpu_viz()
 \SV
    endmodule
